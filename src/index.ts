@@ -5,7 +5,7 @@ import { runCommand } from "./commands.js";
 const require = createRequire(import.meta.url);
 const packageJson = require("../package.json") as { version: string };
 
-const exitCode = runCommand(
+const exitCode = await runCommand(
   process.argv[2],
   process.argv.slice(3),
   packageJson.version,

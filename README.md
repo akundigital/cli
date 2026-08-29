@@ -11,10 +11,14 @@ npx akundigital help
 npx akundigital version
 ```
 
-The initial release provides these commands:
+The CLI provides these commands:
 
 - `help` — show available commands
 - `version` — show the installed version
+- `login <email> <password>` — authenticate with AkunDigital and save tokens locally
+- `profile` — fetch and print the current user profile
+
+Authentication tokens are stored in `~/.config/akundigital/tokens.json`. Expired access tokens are refreshed automatically with the saved refresh token.
 
 Unknown commands return a non-zero exit code and display the usage guide. Future commands can be registered in `src/commands.ts`.
 
