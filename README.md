@@ -28,6 +28,17 @@ npm run build
 node dist/index.js help
 ```
 
+## Publishing
+
+Publishing runs from GitHub Actions when a semantic version tag is pushed. Add a repository secret named `NPM_TOKEN` containing an npm granular access token with package publish access and 2FA bypass enabled, then release with:
+
+```sh
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+Do not put the token in the repository or local `.npmrc`.
+
 ## License
 
 MIT
