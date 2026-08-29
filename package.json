@@ -1,0 +1,38 @@
+{
+  "name": "akundigital",
+  "version": "0.1.0",
+  "description": "A command-line interface for AkunDigital.",
+  "type": "module",
+  "bin": {
+    "akundigital": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run build && node --test",
+    "prepublishOnly": "npm run typecheck && npm test"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/akundigital/cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/akundigital/cli/issues"
+  },
+  "homepage": "https://github.com/akundigital/cli#readme",
+  "license": "MIT",
+  "keywords": [
+    "akundigital",
+    "cli"
+  ],
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  }
+}
