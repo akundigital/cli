@@ -130,7 +130,7 @@ test("profile refreshes expired access token and retains refresh token", async (
   assert.equal(calls[1].options.headers.Authorization, "Bearer new-access");
 });
 
-test("getOrders returns orders capped at 10", async () => {
+test("getOrders returns orders capped at 5 by default", async () => {
   const store = memoryStore({
     accessToken: "access",
     refreshToken: "refresh",
@@ -141,8 +141,22 @@ test("getOrders returns orders capped at 10", async () => {
   const fetchImpl = async () => response({ success: true, data: { orders } });
 
   const result = await getOrders(store, fetchImpl, "client-id", Date.parse("2026-01-01T01:00:00.000Z"));
-  assert.equal(result.length, 10);
+  assert.equal(result.length, 5);
   assert.equal(result[0].id, "od_0");
+});
+
+test("getOrders respects a custom limit", async () => {
+  const store = memoryStore({
+    accessToken: "access",
+    refreshToken: "refresh",
+    issuedAt: "2026-01-01T00:00:00.000Z",
+    expiresAt: "2026-01-01T02:00:00.000Z",
+  });
+  const orders = Array.from({ length: 15 }, (_, index) => ({ id: `od_${index}`, status: "PAID" }));
+  const fetchImpl = async () => response({ success: true, data: { orders } });
+
+  const result = await getOrders(store, fetchImpl, "client-id", Date.parse("2026-01-01T01:00:00.000Z"), 3);
+  assert.equal(result.length, 3);
 });
 
 test("getOrders refreshes on 401 and retries", async () => {
@@ -195,7 +209,7 @@ test("getOrders throws when not logged in", async () => {
   await assert.rejects(getOrders(store, async () => response({})), /Not logged in/);
 });
 
-test("getSubscriptions returns subscriptions capped at 10", async () => {
+test("getSubscriptions returns subscriptions capped at 5 by default", async () => {
   const store = memoryStore({
     accessToken: "access",
     refreshToken: "refresh",
@@ -206,6 +220,20 @@ test("getSubscriptions returns subscriptions capped at 10", async () => {
   const fetchImpl = async () => response({ success: true, data: { subscriptions } });
 
   const result = await getSubscriptions(store, fetchImpl, "client-id", Date.parse("2026-01-01T01:00:00.000Z"));
-  assert.equal(result.length, 10);
+  assert.equal(result.length, 5);
   assert.equal(result[0].id, "sub_0");
+});
+
+test("getSubscriptions respects a custom limit", async () => {
+  const store = memoryStore({
+    accessToken: "access",
+    refreshToken: "refresh",
+    issuedAt: "2026-01-01T00:00:00.000Z",
+    expiresAt: "2026-01-01T02:00:00.000Z",
+  });
+  const subscriptions = Array.from({ length: 15 }, (_, index) => ({ id: `sub_${index}`, status: "ACTIVE" }));
+  const fetchImpl = async () => response({ success: true, data: { subscriptions } });
+
+  const result = await getSubscriptions(store, fetchImpl, "client-id", Date.parse("2026-01-01T01:00:00.000Z"), 3);
+  assert.equal(result.length, 3);
 });

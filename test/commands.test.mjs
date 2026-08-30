@@ -45,7 +45,25 @@ test("command registry exposes built-in commands", () => {
 test("orders rejects extra arguments", async () => {
   const result = await execute("orders", ["extra"]);
   assert.equal(result.code, 1);
-  assert.deepEqual(result.errors, ["Usage: akundigital orders"]);
+  assert.deepEqual(result.errors, ["Usage: akundigital orders [--limit|-l <n>]"]);
+});
+
+test("orders rejects a non-numeric --limit", async () => {
+  const result = await execute("orders", ["--limit", "abc"]);
+  assert.equal(result.code, 1);
+  assert.deepEqual(result.errors, ["--limit must be a positive integer"]);
+});
+
+test("orders rejects a non-numeric -l shorthand", async () => {
+  const result = await execute("orders", ["-l", "abc"]);
+  assert.equal(result.code, 1);
+  assert.deepEqual(result.errors, ["--limit must be a positive integer"]);
+});
+
+test("subscriptions rejects a non-numeric --limit", async () => {
+  const result = await execute("subscriptions", ["--limit", "0"]);
+  assert.equal(result.code, 1);
+  assert.deepEqual(result.errors, ["--limit must be a positive integer"]);
 });
 
 test("token set preserves refresh token and calculates expiry", () => {

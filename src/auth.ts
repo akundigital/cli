@@ -216,13 +216,14 @@ export type Order = {
   created_at: string;
 };
 
-export const maxOrdersLimit = 10;
+export const maxOrdersLimit = 5;
 
 export const getOrders = async (
   tokenStore: TokenStore,
   fetchImpl: FetchLike = fetch,
   clientId = defaultClientId,
   now = Date.now(),
+  limit = maxOrdersLimit,
 ): Promise<Order[]> => {
   let tokens = await tokenStore.load();
   if (!tokens) {
@@ -245,7 +246,7 @@ export const getOrders = async (
   if (!response.ok || !body.success || !body.data) {
     throw new Error(body.error ?? "Failed to get orders");
   }
-  return body.data.orders.slice(0, maxOrdersLimit);
+  return body.data.orders.slice(0, limit);
 };
 
 export type Subscription = {
@@ -264,13 +265,14 @@ export type Subscription = {
   updated_at: string;
 };
 
-export const maxSubscriptionsLimit = 10;
+export const maxSubscriptionsLimit = 5;
 
 export const getSubscriptions = async (
   tokenStore: TokenStore,
   fetchImpl: FetchLike = fetch,
   clientId = defaultClientId,
   now = Date.now(),
+  limit = maxSubscriptionsLimit,
 ): Promise<Subscription[]> => {
   let tokens = await tokenStore.load();
   if (!tokens) {
@@ -293,5 +295,5 @@ export const getSubscriptions = async (
   if (!response.ok || !body.success || !body.data) {
     throw new Error(body.error ?? "Failed to get subscriptions");
   }
-  return body.data.subscriptions.slice(0, maxSubscriptionsLimit);
+  return body.data.subscriptions.slice(0, limit);
 };

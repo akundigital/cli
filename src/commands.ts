@@ -1,4 +1,4 @@
-import { getOrders, getProfile, getSubscriptions, login, loginWithDevice } from "./auth.js";
+import { getOrders, getProfile, getSubscriptions, login, loginWithDevice, maxOrdersLimit, maxSubscriptionsLimit } from "./auth.js";
 import { createTokenStore } from "./token-store.js";
 
 export type CommandContext = {
@@ -10,6 +10,17 @@ export type CommandContext = {
 export type Command = {
   description: string;
   run: (context: CommandContext) => Promise<number>;
+};
+
+const parseLimit = (args: string[], defaultLimit: number): number | Error => {
+  const index = args.findIndex((argument) => argument === "--limit" || argument === "-l");
+  if (index === -1) return defaultLimit;
+  const value = args[index + 1];
+  const parsed = Number(value);
+  if (!value || !Number.isInteger(parsed) || parsed <= 0) {
+    return new Error("--limit must be a positive integer");
+  }
+  return parsed;
 };
 
 export const createCommands = (version: string): Record<string, Command> => ({
@@ -24,8 +35,8 @@ export const createCommands = (version: string): Record<string, Command> => ({
         "  version        Show the installed version",
         "  login          Log in with email and password, or `login --device` for browser-assisted login",
         "  profile        Show the current user profile",
-        "  orders         List your most recent orders (max 10)",
-        "  subscriptions  List subscriptions (admin, max 10)",
+        "  orders         List your most recent orders (default 5, --limit/-l <n>)",
+        "  subscriptions  List subscriptions (admin, default 5, --limit/-l <n>)",
         "",
         "Run `akundigital <command> --help` for command-specific help.",
       ].join("\n"));
@@ -90,14 +101,19 @@ export const createCommands = (version: string): Record<string, Command> => ({
     },
   },
   orders: {
-    description: "List your most recent orders (max 10)",
+    description: "List your most recent orders (default 5, --limit/-l <n>)",
     run: async ({ args, output, error }) => {
-      if (args.length !== 0) {
-        error("Usage: akundigital orders");
+      if (args.length !== 0 && args.length !== 2) {
+        error("Usage: akundigital orders [--limit|-l <n>]");
+        return 1;
+      }
+      const limit = parseLimit(args, maxOrdersLimit);
+      if (limit instanceof Error) {
+        error(limit.message);
         return 1;
       }
       try {
-        const orders = await getOrders(createTokenStore());
+        const orders = await getOrders(createTokenStore(), fetch, undefined, undefined, limit);
         if (orders.length === 0) {
           output("No orders found.");
           return 0;
@@ -111,14 +127,19 @@ export const createCommands = (version: string): Record<string, Command> => ({
     },
   },
   subscriptions: {
-    description: "List subscriptions (admin, max 10)",
+    description: "List subscriptions (admin, default 5, --limit/-l <n>)",
     run: async ({ args, output, error }) => {
-      if (args.length !== 0) {
-        error("Usage: akundigital subscriptions");
+      if (args.length !== 0 && args.length !== 2) {
+        error("Usage: akundigital subscriptions [--limit|-l <n>]");
+        return 1;
+      }
+      const limit = parseLimit(args, maxSubscriptionsLimit);
+      if (limit instanceof Error) {
+        error(limit.message);
         return 1;
       }
       try {
-        const subscriptions = await getSubscriptions(createTokenStore());
+        const subscriptions = await getSubscriptions(createTokenStore(), fetch, undefined, undefined, limit);
         if (subscriptions.length === 0) {
           output("No subscriptions found.");
           return 0;
