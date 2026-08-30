@@ -28,6 +28,10 @@ The CLI provides these commands:
 - `payments` — list payments (admin only, max 10)
 - `credentials` — list credentials (admin only, max 10, `--status <status>` to filter)
 
+`--status` values are matched case-sensitively against the backend's uppercase
+status enums (e.g. `ACTIVE`, `EXPIRED`, `PAID`) — lowercase values will not
+match any records.
+
 `subscriptions`, `payments`, and `credentials` require the logged-in account
 to be a member of the Cognito `admin` group; other accounts will get a 403
 from the backend. `profile` and `orders` work for any authenticated account,

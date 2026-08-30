@@ -50,6 +50,9 @@ export const createCommands = (version: string): Record<string, Command> => ({
         "  payments       List payments (admin, default 5, --limit/-l <n>)",
         "  credentials    List credentials (admin, default 5, --limit/-l <n>, --status <status>)",
         "",
+        "--status values are matched case-sensitively against uppercase status",
+        "enums (e.g. ACTIVE, EXPIRED, PAID); lowercase values will not match.",
+        "",
         "Run `akundigital <command> --help` for command-specific help.",
       ].join("\n"));
       return 0;
