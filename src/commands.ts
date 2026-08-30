@@ -1,4 +1,5 @@
-import { getCredentials, getOrders, getPayments, getProfile, getSubscriptions, login, loginWithDevice, maxCredentialsLimit, maxOrdersLimit, maxPaymentsLimit, maxSubscriptionsLimit } from "./auth.js";
+import { getCredentials, getOrders, getPayments, getProfile, getSubscriptions, maxCredentialsLimit, maxOrdersLimit, maxPaymentsLimit, maxSubscriptionsLimit } from "./admin-resources.js";
+import { login, loginWithDevice } from "./cognito.js";
 import { createTokenStore } from "./token-store.js";
 
 export type CommandContext = {
