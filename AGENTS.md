@@ -3,6 +3,14 @@
 ## Project Overview
 See @README.md for project overview and @package.json for available npm/pnpm commands for this project.
 
+This CLI is for AkunDigital admin staff only. Commands that call `/v1/admin/*`
+backend endpoints (e.g. `subscriptions`) require the logged-in account to be
+in the Cognito `admin` group; the backend's custom authorizer rejects
+non-admin callers with a 403 before the request reaches the handler (see
+`akundigital/services` `docs/api/admin/README.md`). Do not add client-side
+admin-role checks in this CLI — there is no role field in the profile
+response to check, and the backend already enforces this per admin endpoint.
+
 ## Code Style Guidelines
 - Use descriptive variable names
 - Follow existing patterns in the codebase

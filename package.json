@@ -1,7 +1,7 @@
 {
   "name": "akundigital",
   "version": "0.4.1",
-  "description": "A command-line interface for AkunDigital.",
+  "description": "A command-line interface for AkunDigital admin staff.",
   "type": "module",
   "bin": {
     "akundigital": "dist/index.js"
