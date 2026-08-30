@@ -8,6 +8,7 @@ export type TokenSet = {
   refreshToken: string;
   issuedAt: string;
   expiresAt: string;
+  clientId?: string;
 };
 
 export type TokenStore = {
@@ -43,6 +44,16 @@ export const createTokenStore = (path = tokenPath): TokenStore => ({
 export const isTokenExpired = (tokens: TokenSet, now = Date.now()): boolean =>
   new Date(tokens.expiresAt).getTime() <= now;
 
+const decodeJwtClientId = (jwt: string): string | undefined => {
+  try {
+    const payload = jwt.split(".")[1];
+    const decoded = Buffer.from(payload, "base64").toString("utf8");
+    return (JSON.parse(decoded) as { client_id?: string }).client_id;
+  } catch {
+    return undefined;
+  }
+};
+
 export const createTokenSet = (
   result: { AccessToken: string; IdToken?: string; RefreshToken?: string; ExpiresIn?: number },
   refreshToken: string | undefined,
@@ -53,4 +64,5 @@ export const createTokenSet = (
   refreshToken: result.RefreshToken ?? refreshToken ?? "",
   issuedAt: now.toISOString(),
   expiresAt: new Date(now.getTime() + (result.ExpiresIn ?? 3600) * 1000).toISOString(),
+  clientId: decodeJwtClientId(result.AccessToken),
 });

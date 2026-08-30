@@ -56,5 +56,6 @@ test("token set preserves refresh token and calculates expiry", () => {
     refreshToken: "refresh",
     issuedAt: "2026-01-01T00:00:00.000Z",
     expiresAt: "2026-01-01T01:00:00.000Z",
+    clientId: undefined,
   });
 });

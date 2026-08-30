@@ -169,7 +169,7 @@ const refresh = async (
   fetchImpl: FetchLike,
   clientId: string,
 ): Promise<TokenSet> => {
-  const response = await requestCognito("REFRESH_TOKEN_AUTH", { REFRESH_TOKEN: tokens.refreshToken }, fetchImpl, clientId);
+  const response = await requestCognito("REFRESH_TOKEN_AUTH", { REFRESH_TOKEN: tokens.refreshToken }, fetchImpl, tokens.clientId ?? clientId);
   const result = getAuthenticationResult(response);
   const refreshedTokens = createTokenSet(result, tokens.refreshToken);
   await tokenStore.save(refreshedTokens);

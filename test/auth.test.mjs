@@ -35,6 +35,7 @@ test("login calls Cognito and stores tokens", async () => {
     refreshToken: "refresh",
     issuedAt: store.tokens.issuedAt,
     expiresAt: store.tokens.expiresAt,
+    clientId: undefined,
   });
 });
 
@@ -78,6 +79,7 @@ test("loginWithDevice polls until approved and stores mapped tokens", async () =
     refreshToken: "refresh",
     issuedAt: store.tokens.issuedAt,
     expiresAt: store.tokens.expiresAt,
+    clientId: undefined,
   });
   assert.deepEqual(store.tokens, tokens);
 });
@@ -165,6 +167,27 @@ test("getOrders refreshes on 401 and retries", async () => {
   const result = await getOrders(store, fetchImpl, "client-id", Date.parse("2026-01-01T01:00:00.000Z"));
   assert.deepEqual(result, [{ id: "od_1", status: "PAID" }]);
   assert.equal(store.tokens.accessToken, "new-access");
+});
+
+test("profile refresh uses the client id the tokens were issued with, not the default", async () => {
+  const store = memoryStore({
+    accessToken: "expired",
+    refreshToken: "old-refresh",
+    issuedAt: "2026-01-01T00:00:00.000Z",
+    expiresAt: "2026-01-01T00:30:00.000Z",
+    clientId: "device-flow-client",
+  });
+  const calls = [];
+  const fetchImpl = async (url, options) => {
+    calls.push({ url, options });
+    if (url.includes("cognito-idp")) {
+      return response({ AuthenticationResult: { AccessToken: "new-access", ExpiresIn: 3600 } });
+    }
+    return response({ success: true, data: { user_id: "user-1" } });
+  };
+
+  await getProfile(store, fetchImpl, "password-flow-client", Date.parse("2026-01-01T01:00:00.000Z"));
+  assert.equal(JSON.parse(calls[0].options.body).ClientId, "device-flow-client");
 });
 
 test("getOrders throws when not logged in", async () => {
