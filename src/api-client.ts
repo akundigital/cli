@@ -9,6 +9,7 @@ export const fetchAuthorized = async (
   fetchImpl: FetchLike,
   clientId: string,
   now: number,
+  init?: RequestInit,
 ): Promise<Response> => {
   const loadedTokens = await tokenStore.load();
   if (!loadedTokens) {
@@ -18,7 +19,10 @@ export const fetchAuthorized = async (
     ? await refresh(loadedTokens, tokenStore, fetchImpl, clientId)
     : loadedTokens;
 
-  const request = () => fetchImpl(url, { headers: { Authorization: `Bearer ${tokens.accessToken}` } });
+  const request = () => fetchImpl(url, {
+    ...init,
+    headers: { ...init?.headers, Authorization: `Bearer ${tokens.accessToken}` },
+  });
 
   let response = await request();
   if (response.status === 401) {

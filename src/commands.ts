@@ -1,4 +1,4 @@
-import { getCredentials, getOrders, getPayments, getProfile, getSubscriptions, maxCredentialsLimit, maxOrdersLimit, maxPaymentsLimit, maxSubscriptionsLimit } from "./admin-resources.js";
+import { approveOrder, archiveSubscriptions, getCredentials, getOrders, getPayments, getProfile, getSubscriptions, maxCredentialsLimit, maxOrdersLimit, maxPaymentsLimit, maxSubscriptionsLimit } from "./admin-resources.js";
 import { login, loginWithDevice } from "./cognito.js";
 import { createTokenStore } from "./token-store.js";
 
@@ -46,7 +46,9 @@ export const createCommands = (version: string): Record<string, Command> => ({
         "  login          Log in with email and password, or `login --device` for browser-assisted login",
         "  profile        Show the current user profile",
         "  orders         List your most recent orders (default 5, --limit/-l <n>, --status <status>)",
+        "  approve-order  Mark an order as paid (admin)",
         "  subscriptions  List subscriptions (admin, default 5, --limit/-l <n>, --status <status>)",
+        "  archive-subscriptions  Archive expired subscriptions (admin)",
         "  payments       List payments (admin, default 5, --limit/-l <n>, --status <status>)",
         "  credentials    List credentials (admin, default 5, --limit/-l <n>, --status <status>)",
         "",
@@ -142,6 +144,23 @@ export const createCommands = (version: string): Record<string, Command> => ({
       }
     },
   },
+  "approve-order": {
+    description: "Mark an order as paid (admin)",
+    run: async ({ args, output, error }) => {
+      if (args.length !== 1) {
+        error("Usage: akundigital approve-order <order-id>");
+        return 1;
+      }
+      try {
+        const order = await approveOrder(createTokenStore(), args[0]);
+        output(JSON.stringify(order, null, 2));
+        return 0;
+      } catch (approveError) {
+        error(approveError instanceof Error ? approveError.message : "Failed to approve order");
+        return 1;
+      }
+    },
+  },
   subscriptions: {
     description: "List subscriptions (admin, default 5, --limit/-l <n>, --status <status>)",
     run: async ({ args, output, error }) => {
@@ -165,6 +184,30 @@ export const createCommands = (version: string): Record<string, Command> => ({
         return 0;
       } catch (subscriptionsError) {
         error(subscriptionsError instanceof Error ? subscriptionsError.message : "Failed to get subscriptions");
+        return 1;
+      }
+    },
+  },
+  "archive-subscriptions": {
+    description: "Archive expired subscriptions (admin, optionally by ID)",
+    run: async ({ args, output, error }) => {
+      try {
+        const store = createTokenStore();
+        let subscriptionIds = args;
+        if (subscriptionIds.length === 0) {
+          const expired = await getSubscriptions(store, fetch, undefined, undefined, Number.POSITIVE_INFINITY, "EXPIRED");
+          subscriptionIds = expired.map((subscription) => subscription.id);
+          if (subscriptionIds.length === 0) {
+            output("No expired subscriptions found.");
+            return 0;
+          }
+        }
+        const result = await archiveSubscriptions(store, subscriptionIds);
+        output(`Archived ${result.archived_count} subscription(s).`);
+        output(JSON.stringify(result.subscriptions, null, 2));
+        return 0;
+      } catch (archiveError) {
+        error(archiveError instanceof Error ? archiveError.message : "Failed to archive subscriptions");
         return 1;
       }
     },

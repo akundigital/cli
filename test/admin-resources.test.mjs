@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { getCredentials, getOrders, getPayments, getProfile, getSubscriptions } from "../dist/admin-resources.js";
+import { approveOrder, archiveSubscriptions, getCredentials, getOrders, getPayments, getProfile, getSubscriptions } from "../dist/admin-resources.js";
 import { response, memoryStore } from "./test-helpers.mjs";
 
 test("profile refreshes expired access token and retains refresh token", async () => {
@@ -210,8 +210,48 @@ test("getPayments appends a status query parameter when given", async () => {
     return response({ success: true, data: { payments: [] } });
   };
 
-  await getPayments(store, fetchImpl, "client-id", Date.parse("2026-01-01T01:00:00.000Z"), 5, "MATCHED");
-  assert.match(calls[0], /\?status=MATCHED$/);
+  await getPayments(store, fetchImpl, "client-id", Date.parse("2026-01-01T01:00:00.000Z"), 5, "AUTO_PAID");
+  assert.match(calls[0], /\?match_status=AUTO_PAID$/);
+});
+
+test("approveOrder PATCHes the order status to PAID", async () => {
+  const store = memoryStore({
+    accessToken: "access",
+    refreshToken: "refresh",
+    issuedAt: "2026-01-01T00:00:00.000Z",
+    expiresAt: "2026-01-01T02:00:00.000Z",
+  });
+  const calls = [];
+  const fetchImpl = async (url, options) => {
+    calls.push({ url, options });
+    return response({ success: true, data: { order: { id: "order-1", status: "PAID" } } });
+  };
+
+  const order = await approveOrder(store, "order-1", fetchImpl, "client-id", Date.parse("2026-01-01T01:00:00.000Z"));
+  assert.deepEqual(order, { id: "order-1", status: "PAID" });
+  assert.match(calls[0].url, /\/v1\/admin\/orders\/order-1\/status$/);
+  assert.equal(calls[0].options.method, "PATCH");
+  assert.deepEqual(JSON.parse(calls[0].options.body), { status: "PAID" });
+});
+
+test("archiveSubscriptions POSTs the given subscription ids", async () => {
+  const store = memoryStore({
+    accessToken: "access",
+    refreshToken: "refresh",
+    issuedAt: "2026-01-01T00:00:00.000Z",
+    expiresAt: "2026-01-01T02:00:00.000Z",
+  });
+  const calls = [];
+  const fetchImpl = async (url, options) => {
+    calls.push({ url, options });
+    return response({ success: true, data: { archived_count: 2, subscriptions: [{ id: "sub_0", status: "ARCHIVED" }, { id: "sub_1", status: "ARCHIVED" }] } });
+  };
+
+  const result = await archiveSubscriptions(store, ["sub_0", "sub_1"], fetchImpl, "client-id", Date.parse("2026-01-01T01:00:00.000Z"));
+  assert.equal(result.archived_count, 2);
+  assert.match(calls[0].url, /\/v1\/admin\/subscriptions\/archive$/);
+  assert.equal(calls[0].options.method, "POST");
+  assert.deepEqual(JSON.parse(calls[0].options.body), { subscription_ids: ["sub_0", "sub_1"] });
 });
 
 test("getCredentials returns credentials capped at 5 by default", async () => {

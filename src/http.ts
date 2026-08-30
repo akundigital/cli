@@ -10,5 +10,8 @@ export type ApiEnvelope<T> = {
   code?: string;
 };
 
+export const withQueryParam = (endpoint: string, name: string, value?: string): string =>
+  value ? `${endpoint}?${name}=${encodeURIComponent(value)}` : endpoint;
+
 export const withStatus = (endpoint: string, status?: string): string =>
-  status ? `${endpoint}?status=${encodeURIComponent(status)}` : endpoint;
+  withQueryParam(endpoint, "status", status);
