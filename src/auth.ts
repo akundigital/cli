@@ -7,6 +7,8 @@ const apiBaseUrl = "https://6cr9nj44pd.execute-api.ap-southeast-3.amazonaws.com"
 const profileEndpoint = `${apiBaseUrl}/v1/profile`;
 const ordersEndpoint = `${apiBaseUrl}/v1/orders`;
 const subscriptionsEndpoint = `${apiBaseUrl}/v1/admin/subscriptions`;
+const paymentsEndpoint = `${apiBaseUrl}/v1/admin/payments`;
+const credentialsEndpoint = `${apiBaseUrl}/v1/admin/credentials`;
 const deviceStartEndpoint = `${apiBaseUrl}/v1/auth/cli/device`;
 const deviceTokenEndpoint = `${apiBaseUrl}/v1/auth/cli/token`;
 
@@ -218,12 +220,16 @@ export type Order = {
 
 export const maxOrdersLimit = 5;
 
+const withStatus = (endpoint: string, status?: string): string =>
+  status ? `${endpoint}?status=${encodeURIComponent(status)}` : endpoint;
+
 export const getOrders = async (
   tokenStore: TokenStore,
   fetchImpl: FetchLike = fetch,
   clientId = defaultClientId,
   now = Date.now(),
   limit = maxOrdersLimit,
+  status?: string,
 ): Promise<Order[]> => {
   let tokens = await tokenStore.load();
   if (!tokens) {
@@ -233,12 +239,14 @@ export const getOrders = async (
     tokens = await refresh(tokens, tokenStore, fetchImpl, clientId);
   }
 
-  let response = await fetchImpl(ordersEndpoint, {
+  const url = withStatus(ordersEndpoint, status);
+
+  let response = await fetchImpl(url, {
     headers: { Authorization: `Bearer ${tokens.accessToken}` },
   });
   if (response.status === 401) {
     tokens = await refresh(tokens, tokenStore, fetchImpl, clientId);
-    response = await fetchImpl(ordersEndpoint, {
+    response = await fetchImpl(url, {
       headers: { Authorization: `Bearer ${tokens.accessToken}` },
     });
   }
@@ -273,6 +281,7 @@ export const getSubscriptions = async (
   clientId = defaultClientId,
   now = Date.now(),
   limit = maxSubscriptionsLimit,
+  status?: string,
 ): Promise<Subscription[]> => {
   let tokens = await tokenStore.load();
   if (!tokens) {
@@ -282,12 +291,14 @@ export const getSubscriptions = async (
     tokens = await refresh(tokens, tokenStore, fetchImpl, clientId);
   }
 
-  let response = await fetchImpl(subscriptionsEndpoint, {
+  const url = withStatus(subscriptionsEndpoint, status);
+
+  let response = await fetchImpl(url, {
     headers: { Authorization: `Bearer ${tokens.accessToken}` },
   });
   if (response.status === 401) {
     tokens = await refresh(tokens, tokenStore, fetchImpl, clientId);
-    response = await fetchImpl(subscriptionsEndpoint, {
+    response = await fetchImpl(url, {
       headers: { Authorization: `Bearer ${tokens.accessToken}` },
     });
   }
@@ -296,4 +307,93 @@ export const getSubscriptions = async (
     throw new Error(body.error ?? "Failed to get subscriptions");
   }
   return body.data.subscriptions.slice(0, limit);
+};
+
+export type Payment = {
+  id: string;
+  user_id: string;
+  order_id: string;
+  amount: number;
+  status: string;
+  payment_method?: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export const maxPaymentsLimit = 5;
+
+export const getPayments = async (
+  tokenStore: TokenStore,
+  fetchImpl: FetchLike = fetch,
+  clientId = defaultClientId,
+  now = Date.now(),
+  limit = maxPaymentsLimit,
+): Promise<Payment[]> => {
+  let tokens = await tokenStore.load();
+  if (!tokens) {
+    throw new Error("Not logged in. Run `akundigital login <email> <password>` first.");
+  }
+  if (isTokenExpired(tokens, now)) {
+    tokens = await refresh(tokens, tokenStore, fetchImpl, clientId);
+  }
+
+  let response = await fetchImpl(paymentsEndpoint, {
+    headers: { Authorization: `Bearer ${tokens.accessToken}` },
+  });
+  if (response.status === 401) {
+    tokens = await refresh(tokens, tokenStore, fetchImpl, clientId);
+    response = await fetchImpl(paymentsEndpoint, {
+      headers: { Authorization: `Bearer ${tokens.accessToken}` },
+    });
+  }
+  const body = await response.json() as ApiEnvelope<{ payments: Payment[] }>;
+  if (!response.ok || !body.success || !body.data) {
+    throw new Error(body.error ?? "Failed to get payments");
+  }
+  return body.data.payments.slice(0, limit);
+};
+
+export type Credential = {
+  id: string;
+  platform_slug: string;
+  platform_name: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export const maxCredentialsLimit = 5;
+
+export const getCredentials = async (
+  tokenStore: TokenStore,
+  fetchImpl: FetchLike = fetch,
+  clientId = defaultClientId,
+  now = Date.now(),
+  limit = maxCredentialsLimit,
+  status?: string,
+): Promise<Credential[]> => {
+  let tokens = await tokenStore.load();
+  if (!tokens) {
+    throw new Error("Not logged in. Run `akundigital login <email> <password>` first.");
+  }
+  if (isTokenExpired(tokens, now)) {
+    tokens = await refresh(tokens, tokenStore, fetchImpl, clientId);
+  }
+
+  const url = withStatus(credentialsEndpoint, status);
+
+  let response = await fetchImpl(url, {
+    headers: { Authorization: `Bearer ${tokens.accessToken}` },
+  });
+  if (response.status === 401) {
+    tokens = await refresh(tokens, tokenStore, fetchImpl, clientId);
+    response = await fetchImpl(url, {
+      headers: { Authorization: `Bearer ${tokens.accessToken}` },
+    });
+  }
+  const body = await response.json() as ApiEnvelope<{ credentials: Credential[] }>;
+  if (!response.ok || !body.success || !body.data) {
+    throw new Error(body.error ?? "Failed to get credentials");
+  }
+  return body.data.credentials.slice(0, limit);
 };

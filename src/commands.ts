@@ -1,4 +1,4 @@
-import { getOrders, getProfile, getSubscriptions, login, loginWithDevice, maxOrdersLimit, maxSubscriptionsLimit } from "./auth.js";
+import { getCredentials, getOrders, getPayments, getProfile, getSubscriptions, login, loginWithDevice, maxCredentialsLimit, maxOrdersLimit, maxPaymentsLimit, maxSubscriptionsLimit } from "./auth.js";
 import { createTokenStore } from "./token-store.js";
 
 export type CommandContext = {
@@ -23,6 +23,15 @@ const parseLimit = (args: string[], defaultLimit: number): number | Error => {
   return parsed;
 };
 
+const parseOption = (args: string[], name: string): string | undefined => {
+  const index = args.findIndex((argument) => argument === name);
+  if (index === -1) return undefined;
+  return args[index + 1];
+};
+
+const hasOnlyKnownFlags = (args: string[], knownFlags: Set<string>): boolean =>
+  args.length % 2 === 0 && args.filter((_, index) => index % 2 === 0).every((flag) => knownFlags.has(flag));
+
 export const createCommands = (version: string): Record<string, Command> => ({
   help: {
     description: "Show available commands",
@@ -35,8 +44,10 @@ export const createCommands = (version: string): Record<string, Command> => ({
         "  version        Show the installed version",
         "  login          Log in with email and password, or `login --device` for browser-assisted login",
         "  profile        Show the current user profile",
-        "  orders         List your most recent orders (default 5, --limit/-l <n>)",
-        "  subscriptions  List subscriptions (admin, default 5, --limit/-l <n>)",
+        "  orders         List your most recent orders (default 5, --limit/-l <n>, --status <status>)",
+        "  subscriptions  List subscriptions (admin, default 5, --limit/-l <n>, --status <status>)",
+        "  payments       List payments (admin, default 5, --limit/-l <n>)",
+        "  credentials    List credentials (admin, default 5, --limit/-l <n>, --status <status>)",
         "",
         "Run `akundigital <command> --help` for command-specific help.",
       ].join("\n"));
@@ -101,10 +112,10 @@ export const createCommands = (version: string): Record<string, Command> => ({
     },
   },
   orders: {
-    description: "List your most recent orders (default 5, --limit/-l <n>)",
+    description: "List your most recent orders (default 5, --limit/-l <n>, --status <status>)",
     run: async ({ args, output, error }) => {
-      if (args.length !== 0 && args.length !== 2) {
-        error("Usage: akundigital orders [--limit|-l <n>]");
+      if (!hasOnlyKnownFlags(args, new Set(["--limit", "-l", "--status"]))) {
+        error("Usage: akundigital orders [--limit|-l <n>] [--status <status>]");
         return 1;
       }
       const limit = parseLimit(args, maxOrdersLimit);
@@ -112,8 +123,9 @@ export const createCommands = (version: string): Record<string, Command> => ({
         error(limit.message);
         return 1;
       }
+      const status = parseOption(args, "--status");
       try {
-        const orders = await getOrders(createTokenStore(), fetch, undefined, undefined, limit);
+        const orders = await getOrders(createTokenStore(), fetch, undefined, undefined, limit, status);
         if (orders.length === 0) {
           output("No orders found.");
           return 0;
@@ -127,10 +139,10 @@ export const createCommands = (version: string): Record<string, Command> => ({
     },
   },
   subscriptions: {
-    description: "List subscriptions (admin, default 5, --limit/-l <n>)",
+    description: "List subscriptions (admin, default 5, --limit/-l <n>, --status <status>)",
     run: async ({ args, output, error }) => {
-      if (args.length !== 0 && args.length !== 2) {
-        error("Usage: akundigital subscriptions [--limit|-l <n>]");
+      if (!hasOnlyKnownFlags(args, new Set(["--limit", "-l", "--status"]))) {
+        error("Usage: akundigital subscriptions [--limit|-l <n>] [--status <status>]");
         return 1;
       }
       const limit = parseLimit(args, maxSubscriptionsLimit);
@@ -138,8 +150,9 @@ export const createCommands = (version: string): Record<string, Command> => ({
         error(limit.message);
         return 1;
       }
+      const status = parseOption(args, "--status");
       try {
-        const subscriptions = await getSubscriptions(createTokenStore(), fetch, undefined, undefined, limit);
+        const subscriptions = await getSubscriptions(createTokenStore(), fetch, undefined, undefined, limit, status);
         if (subscriptions.length === 0) {
           output("No subscriptions found.");
           return 0;
@@ -148,6 +161,59 @@ export const createCommands = (version: string): Record<string, Command> => ({
         return 0;
       } catch (subscriptionsError) {
         error(subscriptionsError instanceof Error ? subscriptionsError.message : "Failed to get subscriptions");
+        return 1;
+      }
+    },
+  },
+  payments: {
+    description: "List payments (admin, default 5, --limit/-l <n>)",
+    run: async ({ args, output, error }) => {
+      if (!hasOnlyKnownFlags(args, new Set(["--limit", "-l"]))) {
+        error("Usage: akundigital payments [--limit|-l <n>]");
+        return 1;
+      }
+      const limit = parseLimit(args, maxPaymentsLimit);
+      if (limit instanceof Error) {
+        error(limit.message);
+        return 1;
+      }
+      try {
+        const payments = await getPayments(createTokenStore(), fetch, undefined, undefined, limit);
+        if (payments.length === 0) {
+          output("No payments found.");
+          return 0;
+        }
+        output(JSON.stringify(payments, null, 2));
+        return 0;
+      } catch (paymentsError) {
+        error(paymentsError instanceof Error ? paymentsError.message : "Failed to get payments");
+        return 1;
+      }
+    },
+  },
+  credentials: {
+    description: "List credentials (admin, default 5, --limit/-l <n>, --status <status>)",
+    run: async ({ args, output, error }) => {
+      if (!hasOnlyKnownFlags(args, new Set(["--limit", "-l", "--status"]))) {
+        error("Usage: akundigital credentials [--limit|-l <n>] [--status <status>]");
+        return 1;
+      }
+      const limit = parseLimit(args, maxCredentialsLimit);
+      if (limit instanceof Error) {
+        error(limit.message);
+        return 1;
+      }
+      const status = parseOption(args, "--status");
+      try {
+        const credentials = await getCredentials(createTokenStore(), fetch, undefined, undefined, limit, status);
+        if (credentials.length === 0) {
+          output("No credentials found.");
+          return 0;
+        }
+        output(JSON.stringify(credentials, null, 2));
+        return 0;
+      } catch (credentialsError) {
+        error(credentialsError instanceof Error ? credentialsError.message : "Failed to get credentials");
         return 1;
       }
     },

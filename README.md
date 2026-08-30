@@ -23,13 +23,16 @@ The CLI provides these commands:
 - `login <email> <password>` — authenticate with AkunDigital and save tokens locally
 - `login --device` — browser-assisted login: prints a verification URL and code, then waits for approval in a browser (useful on headless/remote machines)
 - `profile` — fetch and print the current user profile
-- `orders` — list your most recent orders (max 10, newest first)
-- `subscriptions` — list subscriptions (admin only, max 10)
+- `orders` — list your most recent orders (max 10, newest first, `--status <status>` to filter)
+- `subscriptions` — list subscriptions (admin only, max 10, `--status <status>` to filter)
+- `payments` — list payments (admin only, max 10)
+- `credentials` — list credentials (admin only, max 10, `--status <status>` to filter)
 
-`subscriptions` requires the logged-in account to be a member of the Cognito
-`admin` group; other accounts will get a 403 from the backend. `profile` and
-`orders` work for any authenticated account, but since this CLI is for admin
-staff, log in with your admin account for all commands.
+`subscriptions`, `payments`, and `credentials` require the logged-in account
+to be a member of the Cognito `admin` group; other accounts will get a 403
+from the backend. `profile` and `orders` work for any authenticated account,
+but since this CLI is for admin staff, log in with your admin account for
+all commands.
 
 Authentication tokens are stored in `~/.config/akundigital/tokens.json`. Expired access tokens are refreshed automatically with the saved refresh token.
 

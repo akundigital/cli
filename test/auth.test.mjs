@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { getOrders, getProfile, getSubscriptions, login, loginWithDevice } from "../dist/auth.js";
+import { getCredentials, getOrders, getPayments, getProfile, getSubscriptions, login, loginWithDevice } from "../dist/auth.js";
 
 const response = (body, status = 200) => new Response(JSON.stringify(body), {
   status,
@@ -236,4 +236,99 @@ test("getSubscriptions respects a custom limit", async () => {
 
   const result = await getSubscriptions(store, fetchImpl, "client-id", Date.parse("2026-01-01T01:00:00.000Z"), 3);
   assert.equal(result.length, 3);
+});
+
+test("getPayments returns payments capped at 5 by default", async () => {
+  const store = memoryStore({
+    accessToken: "access",
+    refreshToken: "refresh",
+    issuedAt: "2026-01-01T00:00:00.000Z",
+    expiresAt: "2026-01-01T02:00:00.000Z",
+  });
+  const payments = Array.from({ length: 15 }, (_, index) => ({ id: `pay_${index}`, status: "PAID" }));
+  const fetchImpl = async () => response({ success: true, data: { payments } });
+
+  const result = await getPayments(store, fetchImpl, "client-id", Date.parse("2026-01-01T01:00:00.000Z"));
+  assert.equal(result.length, 5);
+  assert.equal(result[0].id, "pay_0");
+});
+
+test("getPayments respects a custom limit", async () => {
+  const store = memoryStore({
+    accessToken: "access",
+    refreshToken: "refresh",
+    issuedAt: "2026-01-01T00:00:00.000Z",
+    expiresAt: "2026-01-01T02:00:00.000Z",
+  });
+  const payments = Array.from({ length: 15 }, (_, index) => ({ id: `pay_${index}`, status: "PAID" }));
+  const fetchImpl = async () => response({ success: true, data: { payments } });
+
+  const result = await getPayments(store, fetchImpl, "client-id", Date.parse("2026-01-01T01:00:00.000Z"), 3);
+  assert.equal(result.length, 3);
+});
+
+test("getOrders appends a status query parameter when given", async () => {
+  const store = memoryStore({
+    accessToken: "access",
+    refreshToken: "refresh",
+    issuedAt: "2026-01-01T00:00:00.000Z",
+    expiresAt: "2026-01-01T02:00:00.000Z",
+  });
+  const calls = [];
+  const fetchImpl = async (url) => {
+    calls.push(url);
+    return response({ success: true, data: { orders: [] } });
+  };
+
+  await getOrders(store, fetchImpl, "client-id", Date.parse("2026-01-01T01:00:00.000Z"), 5, "PAID");
+  assert.match(calls[0], /\?status=PAID$/);
+});
+
+test("getSubscriptions appends a status query parameter when given", async () => {
+  const store = memoryStore({
+    accessToken: "access",
+    refreshToken: "refresh",
+    issuedAt: "2026-01-01T00:00:00.000Z",
+    expiresAt: "2026-01-01T02:00:00.000Z",
+  });
+  const calls = [];
+  const fetchImpl = async (url) => {
+    calls.push(url);
+    return response({ success: true, data: { subscriptions: [] } });
+  };
+
+  await getSubscriptions(store, fetchImpl, "client-id", Date.parse("2026-01-01T01:00:00.000Z"), 5, "ACTIVE");
+  assert.match(calls[0], /\?status=ACTIVE$/);
+});
+
+test("getCredentials returns credentials capped at 5 by default", async () => {
+  const store = memoryStore({
+    accessToken: "access",
+    refreshToken: "refresh",
+    issuedAt: "2026-01-01T00:00:00.000Z",
+    expiresAt: "2026-01-01T02:00:00.000Z",
+  });
+  const credentials = Array.from({ length: 15 }, (_, index) => ({ id: `cred_${index}`, status: "ACTIVE" }));
+  const fetchImpl = async () => response({ success: true, data: { credentials } });
+
+  const result = await getCredentials(store, fetchImpl, "client-id", Date.parse("2026-01-01T01:00:00.000Z"));
+  assert.equal(result.length, 5);
+  assert.equal(result[0].id, "cred_0");
+});
+
+test("getCredentials appends a status query parameter when given", async () => {
+  const store = memoryStore({
+    accessToken: "access",
+    refreshToken: "refresh",
+    issuedAt: "2026-01-01T00:00:00.000Z",
+    expiresAt: "2026-01-01T02:00:00.000Z",
+  });
+  const calls = [];
+  const fetchImpl = async (url) => {
+    calls.push(url);
+    return response({ success: true, data: { credentials: [] } });
+  };
+
+  await getCredentials(store, fetchImpl, "client-id", Date.parse("2026-01-01T01:00:00.000Z"), 5, "ACTIVE");
+  assert.match(calls[0], /\?status=ACTIVE$/);
 });
