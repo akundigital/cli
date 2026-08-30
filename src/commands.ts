@@ -1,4 +1,4 @@
-import { getProfile, login } from "./auth.js";
+import { getProfile, login, loginWithDevice } from "./auth.js";
 import { createTokenStore } from "./token-store.js";
 
 export type CommandContext = {
@@ -22,7 +22,7 @@ export const createCommands = (version: string): Record<string, Command> => ({
         "Commands:",
         "  help       Show available commands",
         "  version    Show the installed version",
-        "  login      Log in with email and password",
+        "  login      Log in with email and password, or `login --device` for browser-assisted login",
         "  profile    Show the current user profile",
         "",
         "Run `akundigital <command> --help` for command-specific help.",
@@ -38,10 +38,26 @@ export const createCommands = (version: string): Record<string, Command> => ({
     },
   },
   login: {
-    description: "Log in with email and password",
+    description: "Log in with email and password, or `login --device` for browser-assisted login",
     run: async ({ args, output, error }) => {
-      if (args.length !== 2 || args.includes("--help")) {
-        error("Usage: akundigital login <email> <password>");
+      if (args.includes("--help")) {
+        error("Usage: akundigital login <email> <password>\n   or: akundigital login --device");
+        return 1;
+      }
+      if (args.includes("--device")) {
+        try {
+          await loginWithDevice(createTokenStore(), fetch, ({ verificationUri, userCode }) => {
+            output(`Open ${verificationUri} in a browser and enter code: ${userCode}`);
+          });
+          output("Logged in successfully.");
+          return 0;
+        } catch (loginError) {
+          error(loginError instanceof Error ? loginError.message : "Authentication failed");
+          return 1;
+        }
+      }
+      if (args.length !== 2) {
+        error("Usage: akundigital login <email> <password>\n   or: akundigital login --device");
         return 1;
       }
       try {

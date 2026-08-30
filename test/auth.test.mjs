@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { getProfile, login } from "../dist/auth.js";
+import { getProfile, login, loginWithDevice } from "../dist/auth.js";
 
 const response = (body, status = 200) => new Response(JSON.stringify(body), {
   status,
@@ -36,6 +36,73 @@ test("login calls Cognito and stores tokens", async () => {
     issuedAt: store.tokens.issuedAt,
     expiresAt: store.tokens.expiresAt,
   });
+});
+
+test("loginWithDevice polls until approved and stores mapped tokens", async () => {
+  const store = memoryStore();
+  const calls = [];
+  const noopSleep = async () => {};
+  let pollCount = 0;
+  const fetchImpl = async (url, options) => {
+    calls.push({ url, options });
+    if (url.endsWith("/v1/auth/cli/device")) {
+      return response({ success: true, data: {
+        device_code: "device-code",
+        user_code: "ABCD-EFGH",
+        verification_uri: "https://app.example.com/cli-login",
+        expires_in: 600,
+        interval: 5,
+      } });
+    }
+    pollCount += 1;
+    if (pollCount === 1) {
+      return response({ success: false, error: "Authorization is still pending", code: "AUTHORIZATION_PENDING" });
+    }
+    return response({ success: true, data: {
+      access_token: "access",
+      id_token: "id",
+      refresh_token: "refresh",
+      expires_in: 3600,
+      token_type: "Bearer",
+    } });
+  };
+
+  const prompts = [];
+  const tokens = await loginWithDevice(store, fetchImpl, (prompt) => prompts.push(prompt), noopSleep);
+
+  assert.deepEqual(prompts, [{ verificationUri: "https://app.example.com/cli-login", userCode: "ABCD-EFGH" }]);
+  assert.equal(pollCount, 2);
+  assert.deepEqual(tokens, {
+    accessToken: "access",
+    idToken: "id",
+    refreshToken: "refresh",
+    issuedAt: store.tokens.issuedAt,
+    expiresAt: store.tokens.expiresAt,
+  });
+  assert.deepEqual(store.tokens, tokens);
+});
+
+test("loginWithDevice rejects on invalid device code", async () => {
+  const store = memoryStore();
+  const noopSleep = async () => {};
+  const fetchImpl = async (url) => {
+    if (url.endsWith("/v1/auth/cli/device")) {
+      return response({ success: true, data: {
+        device_code: "device-code",
+        user_code: "ABCD-EFGH",
+        verification_uri: "https://app.example.com/cli-login",
+        expires_in: 600,
+        interval: 5,
+      } });
+    }
+    return response({ success: false, error: "Device code is invalid", code: "INVALID_DEVICE_CODE" });
+  };
+
+  await assert.rejects(
+    loginWithDevice(store, fetchImpl, undefined, noopSleep),
+    /Device code is invalid/,
+  );
+  assert.equal(store.tokens, undefined);
 });
 
 test("profile refreshes expired access token and retains refresh token", async () => {

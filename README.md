@@ -16,6 +16,7 @@ The CLI provides these commands:
 - `help` — show available commands
 - `version` — show the installed version
 - `login <email> <password>` — authenticate with AkunDigital and save tokens locally
+- `login --device` — browser-assisted login: prints a verification URL and code, then waits for approval in a browser (useful on headless/remote machines)
 - `profile` — fetch and print the current user profile
 
 Authentication tokens are stored in `~/.config/akundigital/tokens.json`. Expired access tokens are refreshed automatically with the saved refresh token.
