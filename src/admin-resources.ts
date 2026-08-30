@@ -87,13 +87,11 @@ export const getSubscriptions = async (
 
 export type Payment = {
   id: string;
-  user_id: string;
-  order_id: string;
   amount: number;
-  status: string;
-  payment_method?: string;
-  created_at: string;
-  updated_at: string;
+  provider: string;
+  sender_name?: string;
+  match_status: string;
+  received_at: string;
 };
 
 export const maxPaymentsLimit = 5;
@@ -104,8 +102,9 @@ export const getPayments = async (
   clientId = defaultClientId,
   now = Date.now(),
   limit = maxPaymentsLimit,
+  status?: string,
 ): Promise<Payment[]> => {
-  const response = await fetchAuthorized(paymentsEndpoint, tokenStore, fetchImpl, clientId, now);
+  const response = await fetchAuthorized(withStatus(paymentsEndpoint, status), tokenStore, fetchImpl, clientId, now);
   const body = await response.json() as ApiEnvelope<{ payments: Payment[] }>;
   if (!response.ok || !body.success || !body.data) {
     throw new Error(body.error ?? "Failed to get payments");

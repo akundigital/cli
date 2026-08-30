@@ -197,6 +197,23 @@ test("getPayments respects a custom limit", async () => {
   assert.equal(result.length, 3);
 });
 
+test("getPayments appends a status query parameter when given", async () => {
+  const store = memoryStore({
+    accessToken: "access",
+    refreshToken: "refresh",
+    issuedAt: "2026-01-01T00:00:00.000Z",
+    expiresAt: "2026-01-01T02:00:00.000Z",
+  });
+  const calls = [];
+  const fetchImpl = async (url) => {
+    calls.push(url);
+    return response({ success: true, data: { payments: [] } });
+  };
+
+  await getPayments(store, fetchImpl, "client-id", Date.parse("2026-01-01T01:00:00.000Z"), 5, "MATCHED");
+  assert.match(calls[0], /\?status=MATCHED$/);
+});
+
 test("getCredentials returns credentials capped at 5 by default", async () => {
   const store = memoryStore({
     accessToken: "access",

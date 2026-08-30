@@ -47,7 +47,7 @@ export const createCommands = (version: string): Record<string, Command> => ({
         "  profile        Show the current user profile",
         "  orders         List your most recent orders (default 5, --limit/-l <n>, --status <status>)",
         "  subscriptions  List subscriptions (admin, default 5, --limit/-l <n>, --status <status>)",
-        "  payments       List payments (admin, default 5, --limit/-l <n>)",
+        "  payments       List payments (admin, default 5, --limit/-l <n>, --status <status>)",
         "  credentials    List credentials (admin, default 5, --limit/-l <n>, --status <status>)",
         "",
         "--status values are matched case-sensitively against uppercase status",
@@ -170,10 +170,10 @@ export const createCommands = (version: string): Record<string, Command> => ({
     },
   },
   payments: {
-    description: "List payments (admin, default 5, --limit/-l <n>)",
+    description: "List payments (admin, default 5, --limit/-l <n>, --status <status>)",
     run: async ({ args, output, error }) => {
-      if (!hasOnlyKnownFlags(args, new Set(["--limit", "-l"]))) {
-        error("Usage: akundigital payments [--limit|-l <n>]");
+      if (!hasOnlyKnownFlags(args, new Set(["--limit", "-l", "--status"]))) {
+        error("Usage: akundigital payments [--limit|-l <n>] [--status <status>]");
         return 1;
       }
       const limit = parseLimit(args, maxPaymentsLimit);
@@ -181,8 +181,9 @@ export const createCommands = (version: string): Record<string, Command> => ({
         error(limit.message);
         return 1;
       }
+      const status = parseOption(args, "--status");
       try {
-        const payments = await getPayments(createTokenStore(), fetch, undefined, undefined, limit);
+        const payments = await getPayments(createTokenStore(), fetch, undefined, undefined, limit, status);
         if (payments.length === 0) {
           output("No payments found.");
           return 0;

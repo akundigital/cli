@@ -25,7 +25,7 @@ The CLI provides these commands:
 - `profile` — fetch and print the current user profile
 - `orders` — list your most recent orders (max 10, newest first, `--status <status>` to filter)
 - `subscriptions` — list subscriptions (admin only, max 10, `--status <status>` to filter)
-- `payments` — list payments (admin only, max 10)
+- `payments` — list payments (admin only, max 10, `--status <status>` to filter)
 - `credentials` — list credentials (admin only, max 10, `--status <status>` to filter)
 
 `--status` values are matched case-sensitively against the backend's uppercase
