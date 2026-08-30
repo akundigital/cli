@@ -8,6 +8,12 @@ See @README.md for project overview and @package.json for available npm/pnpm com
 - Follow existing patterns in the codebase
 - Extract complex conditions into meaningful boolean variables
 
+## Testing Guidelines
+- Only write unit tests for complex/business logic (e.g. the max-10 cap on list endpoints).
+- Do not write unit tests for infrastructure plumbing (token refresh/retry flow, auth-check
+  guards, CLI arg-count validation) when that plumbing is generic and already covered by
+  another function's tests following the same pattern (e.g. `getOrders`, `login`).
+
 ## Architecture Notes
 Add important architectural decisions and patterns here.
 

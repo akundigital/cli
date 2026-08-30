@@ -39,7 +39,7 @@ test("unknown commands fail and display help", async () => {
 });
 
 test("command registry exposes built-in commands", () => {
-  assert.deepEqual(Object.keys(createCommands("0.1.0")), ["help", "version", "login", "profile", "orders"]);
+  assert.deepEqual(Object.keys(createCommands("0.1.0")), ["help", "version", "login", "profile", "orders", "subscriptions"]);
 });
 
 test("orders rejects extra arguments", async () => {

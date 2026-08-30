@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { getOrders, getProfile, login, loginWithDevice } from "../dist/auth.js";
+import { getOrders, getProfile, getSubscriptions, login, loginWithDevice } from "../dist/auth.js";
 
 const response = (body, status = 200) => new Response(JSON.stringify(body), {
   status,
@@ -170,4 +170,19 @@ test("getOrders refreshes on 401 and retries", async () => {
 test("getOrders throws when not logged in", async () => {
   const store = memoryStore(undefined);
   await assert.rejects(getOrders(store, async () => response({})), /Not logged in/);
+});
+
+test("getSubscriptions returns subscriptions capped at 10", async () => {
+  const store = memoryStore({
+    accessToken: "access",
+    refreshToken: "refresh",
+    issuedAt: "2026-01-01T00:00:00.000Z",
+    expiresAt: "2026-01-01T02:00:00.000Z",
+  });
+  const subscriptions = Array.from({ length: 15 }, (_, index) => ({ id: `sub_${index}`, status: "ACTIVE" }));
+  const fetchImpl = async () => response({ success: true, data: { subscriptions } });
+
+  const result = await getSubscriptions(store, fetchImpl, "client-id", Date.parse("2026-01-01T01:00:00.000Z"));
+  assert.equal(result.length, 10);
+  assert.equal(result[0].id, "sub_0");
 });

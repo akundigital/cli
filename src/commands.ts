@@ -1,4 +1,4 @@
-import { getOrders, getProfile, login, loginWithDevice } from "./auth.js";
+import { getOrders, getProfile, getSubscriptions, login, loginWithDevice } from "./auth.js";
 import { createTokenStore } from "./token-store.js";
 
 export type CommandContext = {
@@ -20,11 +20,12 @@ export const createCommands = (version: string): Record<string, Command> => ({
         "Usage: akundigital <command> [arguments]",
         "",
         "Commands:",
-        "  help       Show available commands",
-        "  version    Show the installed version",
-        "  login      Log in with email and password, or `login --device` for browser-assisted login",
-        "  profile    Show the current user profile",
-        "  orders     List your most recent orders (max 10)",
+        "  help           Show available commands",
+        "  version        Show the installed version",
+        "  login          Log in with email and password, or `login --device` for browser-assisted login",
+        "  profile        Show the current user profile",
+        "  orders         List your most recent orders (max 10)",
+        "  subscriptions  List subscriptions (admin, max 10)",
         "",
         "Run `akundigital <command> --help` for command-specific help.",
       ].join("\n"));
@@ -105,6 +106,27 @@ export const createCommands = (version: string): Record<string, Command> => ({
         return 0;
       } catch (ordersError) {
         error(ordersError instanceof Error ? ordersError.message : "Failed to get orders");
+        return 1;
+      }
+    },
+  },
+  subscriptions: {
+    description: "List subscriptions (admin, max 10)",
+    run: async ({ args, output, error }) => {
+      if (args.length !== 0) {
+        error("Usage: akundigital subscriptions");
+        return 1;
+      }
+      try {
+        const subscriptions = await getSubscriptions(createTokenStore());
+        if (subscriptions.length === 0) {
+          output("No subscriptions found.");
+          return 0;
+        }
+        output(JSON.stringify(subscriptions, null, 2));
+        return 0;
+      } catch (subscriptionsError) {
+        error(subscriptionsError instanceof Error ? subscriptionsError.message : "Failed to get subscriptions");
         return 1;
       }
     },

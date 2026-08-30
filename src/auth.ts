@@ -6,6 +6,7 @@ const defaultClientId = "6vcd500elmtpkiks9qp83vs8fh";
 const apiBaseUrl = "https://6cr9nj44pd.execute-api.ap-southeast-3.amazonaws.com";
 const profileEndpoint = `${apiBaseUrl}/v1/profile`;
 const ordersEndpoint = `${apiBaseUrl}/v1/orders`;
+const subscriptionsEndpoint = `${apiBaseUrl}/v1/admin/subscriptions`;
 const deviceStartEndpoint = `${apiBaseUrl}/v1/auth/cli/device`;
 const deviceTokenEndpoint = `${apiBaseUrl}/v1/auth/cli/token`;
 
@@ -245,4 +246,52 @@ export const getOrders = async (
     throw new Error(body.error ?? "Failed to get orders");
   }
   return body.data.orders.slice(0, maxOrdersLimit);
+};
+
+export type Subscription = {
+  id: string;
+  user_id: string;
+  platform_slug: string;
+  platform_name: string;
+  order_id: string;
+  plan_type: string;
+  plan_duration: number;
+  status: string;
+  credential_id?: string;
+  credential_slot_id?: string;
+  subscription_expires_at?: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export const maxSubscriptionsLimit = 10;
+
+export const getSubscriptions = async (
+  tokenStore: TokenStore,
+  fetchImpl: FetchLike = fetch,
+  clientId = defaultClientId,
+  now = Date.now(),
+): Promise<Subscription[]> => {
+  let tokens = await tokenStore.load();
+  if (!tokens) {
+    throw new Error("Not logged in. Run `akundigital login <email> <password>` first.");
+  }
+  if (isTokenExpired(tokens, now)) {
+    tokens = await refresh(tokens, tokenStore, fetchImpl, clientId);
+  }
+
+  let response = await fetchImpl(subscriptionsEndpoint, {
+    headers: { Authorization: `Bearer ${tokens.accessToken}` },
+  });
+  if (response.status === 401) {
+    tokens = await refresh(tokens, tokenStore, fetchImpl, clientId);
+    response = await fetchImpl(subscriptionsEndpoint, {
+      headers: { Authorization: `Bearer ${tokens.accessToken}` },
+    });
+  }
+  const body = await response.json() as ApiEnvelope<{ subscriptions: Subscription[] }>;
+  if (!response.ok || !body.success || !body.data) {
+    throw new Error(body.error ?? "Failed to get subscriptions");
+  }
+  return body.data.subscriptions.slice(0, maxSubscriptionsLimit);
 };
