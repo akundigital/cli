@@ -5,6 +5,7 @@ const cognitoEndpoint = "https://cognito-idp.ap-southeast-3.amazonaws.com/";
 const defaultClientId = "6vcd500elmtpkiks9qp83vs8fh";
 const apiBaseUrl = "https://6cr9nj44pd.execute-api.ap-southeast-3.amazonaws.com";
 const profileEndpoint = `${apiBaseUrl}/v1/profile`;
+const ordersEndpoint = `${apiBaseUrl}/v1/orders`;
 const deviceStartEndpoint = `${apiBaseUrl}/v1/auth/cli/device`;
 const deviceTokenEndpoint = `${apiBaseUrl}/v1/auth/cli/token`;
 
@@ -202,4 +203,46 @@ export const getProfile = async (
     throw new Error(body.error ?? "Failed to get profile");
   }
   return body.data ?? body;
+};
+
+export type Order = {
+  id: string;
+  platform_name: string;
+  plan_type: string;
+  plan_duration: number;
+  status: string;
+  total_amount?: number;
+  created_at: string;
+};
+
+export const maxOrdersLimit = 10;
+
+export const getOrders = async (
+  tokenStore: TokenStore,
+  fetchImpl: FetchLike = fetch,
+  clientId = defaultClientId,
+  now = Date.now(),
+): Promise<Order[]> => {
+  let tokens = await tokenStore.load();
+  if (!tokens) {
+    throw new Error("Not logged in. Run `akundigital login <email> <password>` first.");
+  }
+  if (isTokenExpired(tokens, now)) {
+    tokens = await refresh(tokens, tokenStore, fetchImpl, clientId);
+  }
+
+  let response = await fetchImpl(ordersEndpoint, {
+    headers: { Authorization: `Bearer ${tokens.accessToken}` },
+  });
+  if (response.status === 401) {
+    tokens = await refresh(tokens, tokenStore, fetchImpl, clientId);
+    response = await fetchImpl(ordersEndpoint, {
+      headers: { Authorization: `Bearer ${tokens.accessToken}` },
+    });
+  }
+  const body = await response.json() as ApiEnvelope<{ orders: Order[] }>;
+  if (!response.ok || !body.success || !body.data) {
+    throw new Error(body.error ?? "Failed to get orders");
+  }
+  return body.data.orders.slice(0, maxOrdersLimit);
 };

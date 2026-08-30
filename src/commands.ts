@@ -1,4 +1,4 @@
-import { getProfile, login, loginWithDevice } from "./auth.js";
+import { getOrders, getProfile, login, loginWithDevice } from "./auth.js";
 import { createTokenStore } from "./token-store.js";
 
 export type CommandContext = {
@@ -24,6 +24,7 @@ export const createCommands = (version: string): Record<string, Command> => ({
         "  version    Show the installed version",
         "  login      Log in with email and password, or `login --device` for browser-assisted login",
         "  profile    Show the current user profile",
+        "  orders     List your most recent orders (max 10)",
         "",
         "Run `akundigital <command> --help` for command-specific help.",
       ].join("\n"));
@@ -83,6 +84,27 @@ export const createCommands = (version: string): Record<string, Command> => ({
         return 0;
       } catch (profileError) {
         error(profileError instanceof Error ? profileError.message : "Failed to get profile");
+        return 1;
+      }
+    },
+  },
+  orders: {
+    description: "List your most recent orders (max 10)",
+    run: async ({ args, output, error }) => {
+      if (args.length !== 0) {
+        error("Usage: akundigital orders");
+        return 1;
+      }
+      try {
+        const orders = await getOrders(createTokenStore());
+        if (orders.length === 0) {
+          output("No orders found.");
+          return 0;
+        }
+        output(JSON.stringify(orders, null, 2));
+        return 0;
+      } catch (ordersError) {
+        error(ordersError instanceof Error ? ordersError.message : "Failed to get orders");
         return 1;
       }
     },

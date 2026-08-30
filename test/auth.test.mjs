@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { getProfile, login, loginWithDevice } from "../dist/auth.js";
+import { getOrders, getProfile, login, loginWithDevice } from "../dist/auth.js";
 
 const response = (body, status = 200) => new Response(JSON.stringify(body), {
   status,
@@ -126,4 +126,48 @@ test("profile refreshes expired access token and retains refresh token", async (
   assert.equal(store.tokens.accessToken, "new-access");
   assert.equal(store.tokens.refreshToken, "old-refresh");
   assert.equal(calls[1].options.headers.Authorization, "Bearer new-access");
+});
+
+test("getOrders returns orders capped at 10", async () => {
+  const store = memoryStore({
+    accessToken: "access",
+    refreshToken: "refresh",
+    issuedAt: "2026-01-01T00:00:00.000Z",
+    expiresAt: "2026-01-01T02:00:00.000Z",
+  });
+  const orders = Array.from({ length: 15 }, (_, index) => ({ id: `od_${index}`, status: "PAID" }));
+  const fetchImpl = async () => response({ success: true, data: { orders } });
+
+  const result = await getOrders(store, fetchImpl, "client-id", Date.parse("2026-01-01T01:00:00.000Z"));
+  assert.equal(result.length, 10);
+  assert.equal(result[0].id, "od_0");
+});
+
+test("getOrders refreshes on 401 and retries", async () => {
+  const store = memoryStore({
+    accessToken: "expired",
+    refreshToken: "old-refresh",
+    issuedAt: "2026-01-01T00:00:00.000Z",
+    expiresAt: "2026-01-01T02:00:00.000Z",
+  });
+  const calls = [];
+  const fetchImpl = async (url, options) => {
+    calls.push({ url, options });
+    if (url.includes("cognito-idp")) {
+      return response({ AuthenticationResult: { AccessToken: "new-access", ExpiresIn: 3600 } });
+    }
+    if (calls.filter((call) => call.url.includes("/v1/orders")).length === 1) {
+      return response({ success: false, error: "Unauthorized" }, 401);
+    }
+    return response({ success: true, data: { orders: [{ id: "od_1", status: "PAID" }] } });
+  };
+
+  const result = await getOrders(store, fetchImpl, "client-id", Date.parse("2026-01-01T01:00:00.000Z"));
+  assert.deepEqual(result, [{ id: "od_1", status: "PAID" }]);
+  assert.equal(store.tokens.accessToken, "new-access");
+});
+
+test("getOrders throws when not logged in", async () => {
+  const store = memoryStore(undefined);
+  await assert.rejects(getOrders(store, async () => response({})), /Not logged in/);
 });

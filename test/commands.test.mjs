@@ -39,7 +39,13 @@ test("unknown commands fail and display help", async () => {
 });
 
 test("command registry exposes built-in commands", () => {
-  assert.deepEqual(Object.keys(createCommands("0.1.0")), ["help", "version", "login", "profile"]);
+  assert.deepEqual(Object.keys(createCommands("0.1.0")), ["help", "version", "login", "profile", "orders"]);
+});
+
+test("orders rejects extra arguments", async () => {
+  const result = await execute("orders", ["extra"]);
+  assert.equal(result.code, 1);
+  assert.deepEqual(result.errors, ["Usage: akundigital orders"]);
 });
 
 test("token set preserves refresh token and calculates expiry", () => {
